@@ -1,4 +1,6 @@
 from typing import Optional
+import json
+import os
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -77,4 +79,37 @@ def get_main_menu_button_keyboard() -> InlineKeyboardMarkup:
     """Create keyboard with main menu button."""
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="🏠 Вернуться в главное меню", callback_data="main_menu"))
+    return builder.as_markup()
+
+
+def get_services_selection_keyboard() -> InlineKeyboardMarkup:
+    """Create keyboard with services from clinic.json for selection."""
+    builder = InlineKeyboardBuilder()
+    
+    # Get the path to clinic.json
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    clinic_path = os.path.join(current_dir, '..', 'data', 'clinic.json')
+    
+    try:
+        with open(clinic_path, 'r', encoding='utf-8') as f:
+            clinic_data = json.load(f)
+        
+        services = clinic_data.get('services', [])
+        
+        for i, service in enumerate(services):
+            service_name = service.get('name', '')
+            builder.add(
+                InlineKeyboardButton(text=service_name, callback_data=f"select_service:{i}")
+            )
+        
+        # Add back button
+        builder.row(
+            InlineKeyboardButton(text="🔙 В главное меню", callback_data="main_menu")
+        )
+    except Exception as e:
+        # Fallback if clinic.json can't be read
+        builder.add(
+            InlineKeyboardButton(text="🔙 В главное меню", callback_data="main_menu")
+        )
+    
     return builder.as_markup()

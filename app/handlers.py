@@ -15,7 +15,8 @@ from app.keyboards import (
     get_admin_keyboard,
     get_back_keyboard,
     get_reschedule_keyboard,
-    get_main_menu_button_keyboard
+    get_main_menu_button_keyboard,
+    get_services_selection_keyboard
 )
 from app.database import init_db, create_appointment, get_appointment, update_appointment_status, update_appointment_with_rejection
 from app.groq_client import groq_client
@@ -116,27 +117,48 @@ async def callback_book_appointment(callback: CallbackQuery, state: FSMContext) 
     
     await callback.message.edit_text(
         "📅 Запись на консультацию\n\n"
-        "Какую услугу вы хотите?",
-        reply_markup=get_back_keyboard()
+        "Выберите услугу:",
+        reply_markup=get_services_selection_keyboard()
     )
     await callback.answer()
 
 
-@router.message(AppointmentStates.service)
-async def process_service(message: Message, state: FSMContext) -> None:
-    """Process service input."""
-    if not is_valid_text_length(message.text, min_length=2, max_length=100):
-        await message.answer(
-            "⚠️ Слишком короткое или пустое название услуги. Пожалуйста, введите название услуги:"
-        )
+@router.callback_query(F.data.startswith("select_service:"))
+async def callback_select_service(callback: CallbackQuery, state: FSMContext) -> None:
+    """Handle service selection callback."""
+    import json
+    import os
+    
+    # Get the path to clinic.json
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    clinic_path = os.path.join(current_dir, '..', 'data', 'clinic.json')
+    
+    try:
+        with open(clinic_path, 'r', encoding='utf-8') as f:
+            clinic_data = json.load(f)
+        
+        services = clinic_data.get('services', [])
+        service_index = int(callback.data.split(":")[-1])
+        
+        if 0 <= service_index < len(services):
+            service_name = services[service_index].get('name', '')
+            
+            await state.update_data(service=service_name)
+            await state.set_state(AppointmentStates.date)
+            
+            await callback.message.edit_text(
+                f"✅ Выбрана услуга: {service_name}\n\n"
+                "Введите желаемую дату (например: 15.08.2026):"
+            )
+        else:
+            await callback.answer("❌ Ошибка выбора услуги")
+            return
+    except Exception as e:
+        logger.error(f"Error selecting service: {e}")
+        await callback.answer("❌ Ошибка загрузки услуг")
         return
     
-    await state.update_data(service=message.text)
-    await state.set_state(AppointmentStates.date)
-    
-    await message.answer(
-        "Введите желаемую дату (например: 15.08.2026):"
-    )
+    await callback.answer()
 
 
 @router.message(AppointmentStates.date)
