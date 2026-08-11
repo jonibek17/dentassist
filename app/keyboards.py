@@ -112,4 +112,5 @@ def get_services_selection_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🔙 В главное меню", callback_data="main_menu")
         )
     
+    builder.adjust(1)
     return builder.as_markup()
