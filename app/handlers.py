@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 from typing import Optional
@@ -492,3 +493,23 @@ async def cmd_cancel(message: Message, state: FSMContext) -> None:
         "❌ Действие отменено.\n\n",
         reply_markup=get_main_menu_keyboard()
     )
+
+
+import sqlite3
+
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "dentassist.db")
+
+
+@router.message(F.text == "/clearall")
+async def cmd_clear_all(message: Message) -> None:
+    """Admin-only: wipe all test appointments from the database."""
+    if str(message.from_user.id) != os.getenv("ADMIN_CHAT_ID"):
+        return
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM appointments")
+    conn.commit()
+    conn.close()
+
+    await message.answer("🗑 Все тестовые заявки удалены из базы.")
