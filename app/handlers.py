@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import sqlite3
 from typing import Optional
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
@@ -495,9 +496,7 @@ async def cmd_cancel(message: Message, state: FSMContext) -> None:
     )
 
 
-import sqlite3
-
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "dentassist.db")
+from app.config import config
 
 
 @router.message(F.text == "/clearall")
@@ -506,7 +505,7 @@ async def cmd_clear_all(message: Message) -> None:
     if str(message.from_user.id) != os.getenv("ADMIN_CHAT_ID"):
         return
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(config.DB_PATH)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM appointments")
     conn.commit()
